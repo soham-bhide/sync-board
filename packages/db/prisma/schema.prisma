@@ -1,0 +1,87 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+ enum ORG_ROLE {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model User {
+  id            String       @id @default(uuid())
+  username      String       @unique
+  password      String
+  email         String       @unique
+  createdAt     DateTime     @default(now())
+  organizations Membership[]
+}
+
+model Organization {
+  id          String       @id @default(uuid())
+  name        String
+  description String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  members     Membership[]
+  boards      Board[]
+}
+
+model Membership {
+  id             String       @id @default(uuid())
+  userId         String
+  organizationId String
+  role           ORG_ROLE     @default(MEMBER)
+  joinedAt       DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+}
+
+model Board {
+  id             String       @id @default(uuid())
+  title          String
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  issues         Issue[]
+  sections       Section[]
+
+  @@unique([organizationId, title])
+}
+
+model Section {
+  id        String   @id @default(uuid())
+  title     String
+  position  Int      @default(0)
+  boardId   String
+  createdAt DateTime @default(now())
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  issues    Issue[]
+
+  @@unique([boardId, title])
+}
+
+model Issue {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  position    Int      @default(0)
+  boardId     String
+  sectionId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  board       Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  section     Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+}
