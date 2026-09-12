@@ -1,23 +1,17 @@
 {
-  "name": "backend",
+  "name": "common-backend",
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "exports":{
+    "./jwt_secret":"./index.ts"
+  },
   "devDependencies": {
-    "@types/bcrypt": "^6.0.0",
     "@types/bun": "latest",
     "@types/jsonwebtoken": "^9.0.10",
-    "bcrypt": "^6.0.0",
     "jsonwebtoken": "^9.0.3"
   },
   "peerDependencies": {
     "typescript": "^7"
-  },
-  "dependencies": {
-    "@types/express": "^5.0.6",
-    "express": "^5.2.1",
-    "db": "*",
-    "common": "*",
-    "common-backend": "*"
   }
 }
