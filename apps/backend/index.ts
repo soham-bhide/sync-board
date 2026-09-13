@@ -1,9 +1,10 @@
 import express from "express";
 import {prisma} from "db/client"
-import { signinSchema, signupSchema } from "common/types";
+import { organizationsSchema, signinSchema, signupSchema } from "common/types";
 import bcrypt from 'bcrypt';
 import { JWT_SECRET } from "common-backend/jwt_secret";
 import jwt from 'jsonwebtoken';
+import { middleware } from "./middleware";
 const app = express();
 
 app.use(express.json());
@@ -90,3 +91,40 @@ catch(e){
 }
 
 })
+
+app.post("/organizations", middleware, async (req, res) => {
+  try {
+    const parsedData = organizationsSchema.safeParse(req.body);
+    if (!parsedData.success) {
+      return res.json({
+        message: "Invalid credentials"
+      });
+    }
+
+    const { name, description } = parsedData.data;
+
+    const createOrganization = await prisma.organization.create({
+      data: {
+        name,
+        description,
+        members: {
+          create: {
+            userId: req.userId,
+            role: "OWNER",
+          },
+        },
+      },
+    });
+
+    return res.status(201).json({
+      message: "Organization created",
+      organization: createOrganization,
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({
+      message: "Something went wrong",
+    });
+  }
+});
+

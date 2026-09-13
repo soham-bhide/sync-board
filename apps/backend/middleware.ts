@@ -1,3 +1,13 @@
+declare global {
+  namespace Express {
+    interface Request {
+      userId: string;
+    }
+  }
+}
+
+export {};
+
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "common-backend/jwt_secret";
 export function middleware(req:any,res:any,next:any){
