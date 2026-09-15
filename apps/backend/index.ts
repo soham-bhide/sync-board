@@ -135,18 +135,18 @@ try{
       userId:req.userId
     },
     select:{
-      organization:true,
       role:true,
-      joinedAt:true
-    }
+      organization:{
+        select:{
+          name:true
+        }
+      }
+    },
+    
   })
-const formattedOrganizations = members.map((m) => ({
-      ...m.organization,
-      role: m.role,
-      joinedAt: m.joinedAt,
-    }));
+
     return res.json({
-      formattedOrganizations
+      members
     })
 
 }
@@ -172,7 +172,7 @@ app.get("/organizations/:id", middleware, async (req, res) => {
     });
 
     if (!organizationcheck) {
-      return res.status(403).json({
+      return res.json({
         message: "Access denied or organization not found"
       });
     }
@@ -182,30 +182,25 @@ app.get("/organizations/:id", middleware, async (req, res) => {
       where: {
         organizationId: orgid
       },
-      select: {
-        role: true,
-        joinedAt: true,
-        user: {
-          select: {
-            id: true,
-            username: true,
-            email: true
+      include:{
+        user:{
+          select:{
+            email:true,
+            username:true
+          }
+        },
+        organization:{
+          select:{
+            name:true,
+            description:true,
+            title:true
           }
         }
       }
     });
 
-    
-    const formattedOrganizations = members.map((m) => ({
-      userId: m.user.id,
-      username: m.user.username,
-      email: m.user.email,
-      role: m.role,
-      joinedAt: m.joinedAt
-    }));
-
     return res.json({
-      members: formattedOrganizations
+      members: members
     });
   } catch (e) {
     console.log(e);
