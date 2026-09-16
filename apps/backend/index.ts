@@ -1,6 +1,6 @@
 import express from "express";
 import {prisma} from "db/client"
-import { boardSchema, organizationsSchema, signinSchema, signupSchema } from "common/types";
+import { boardSchema, issueSchema, organizationsSchema, sectionSchema, signinSchema, signupSchema } from "common/types";
 import bcrypt from 'bcrypt';
 import { JWT_SECRET } from "common-backend/jwt_secret";
 import jwt from 'jsonwebtoken';
@@ -193,7 +193,6 @@ app.get("/organizations/:id", middleware, async (req, res) => {
           select:{
             name:true,
             description:true,
-            title:true
           }
         }
       }
@@ -404,11 +403,12 @@ app.delete("/organizations/:orgid/boards/:boardid",middleware, async(req,res)=>{
       })
     }
 
-    await prisma.board.delete({
-      where:{
-        id:boardid
-      }
-    })
+    const deleted = await prisma.board.deleteMany({
+      where: { id: boardid, organizationId: orgid }
+    });
+    if (deleted.count === 0) {
+      return res.status(404).json({ message: "Board not found" });
+    }
 
     return res.json({
       message:'Board deleted'
@@ -422,3 +422,189 @@ app.delete("/organizations/:orgid/boards/:boardid",middleware, async(req,res)=>{
   
 })
 
+app.post("/organizations/:orgid/boards/:boardid/sections", middleware, async(req,res)=>{
+  try{
+const {orgid, boardid} = req.params
+  const parsedData = sectionSchema.safeParse(req.body);
+  if(!parsedData.success){
+    return res.json({
+      message:"Something went wrong"
+    })
+  }
+  const {title} = parsedData.data;
+  const idcheck = await prisma.membership.findFirst({
+    where:{
+      userId:req.userId,
+      organizationId:orgid
+    }
+  })
+  if(!idcheck){
+    return res.json({message:"Something went wrong"})
+  }
+
+  const boardidcheck = await prisma.board.findFirst({
+    where:{
+      id:boardid,
+      organizationId:orgid
+    }
+  })
+  if (!boardidcheck) {
+      return res.json({ message: "Something went wrong" });
+    }
+
+    const lastSection = await prisma.section.findFirst({
+      where: { boardId: boardid },
+      orderBy: { position: "desc" },
+      select: { position: true }
+    });
+    const position = lastSection ? lastSection.position + 1 : 1;
+    const section = await prisma.section.create({
+      data:{
+        title,
+        boardId:boardid,
+        position:position
+      }
+    })
+
+    return res.json(section)
+  }
+  catch(e){
+    console.log(e);
+    return res.json({message:'Error occured'})
+  }
+})
+
+app.post("/organizations/:orgid/boards/:boardid/sections/:sectionid/issues", middleware,async (req,res)=>{
+  try{
+const {orgid,boardid,sectionid} = req.params;
+  const parsedData = issueSchema.safeParse(req.body);
+
+  if(!parsedData.success){
+    return res.json({
+      message:"Invalid credentials"
+    })
+  }
+  const {title, description} = parsedData.data;
+  const idcheck = await prisma.membership.findFirst({
+    where:{
+      userId:req.userId,
+      organizationId:orgid
+    }
+  })
+
+  if(!idcheck){
+    return res.json({
+      message:"Organization doesnt exists"
+    })
+  }
+
+  const sectioncheck = await prisma.section.findFirst({
+    where:{
+    id:sectionid,
+    boardId:boardid
+    }
+
+  }) 
+  if(!sectioncheck){
+    return res.json({
+      message:"Section not found"
+    })
+  }
+
+  const lastissue = await prisma.issue.findFirst({
+    where:{
+      sectionId:sectionid
+    },
+    orderBy:{
+      position:"desc"
+    },
+    select:{
+      position:true
+    }
+  })
+
+  const position = lastissue ? lastissue.position+1 : 1;
+
+    const issue = await prisma.issue.create({
+      data: { title, description, boardId: boardid, sectionId: sectionid, position }
+    });
+
+    return res.json(issue)
+  }
+  catch(e){
+    return res.json({
+      message:"Error occured"
+    })
+  }
+});
+
+app.delete("/organizations/:orgid/boards/:boardid/sections/:sectionid", middleware, async (req, res) => {
+  try{
+ const {orgid, boardid, sectionid} = req.params;
+   const idcheck  = await prisma.membership.findFirst({
+    where:{
+      userId:req.userId,
+      organizationId:orgid,
+      role:{in:["ADMIN","OWNER"]}
+    }
+   })
+   if(!idcheck){
+    return res.json({
+      message:"Org doesnt exist"
+    })
+   }
+  
+
+   const deleted = await prisma.section.deleteMany({
+    where:{
+      id:sectionid,boardId:boardid
+    }
+   })
+
+  if (deleted.count === 0) {
+      return res.json({ message: "Section not found" });
+  }
+  return res.json({ message: "Section deleted" });
+  }
+  catch(e){
+    console.log(e);
+      return res.json({ message: "Some went wrong" });
+
+  } 
+})
+
+app.get("/organizations/:orgid/boards/:boardid/issues/:issueid", middleware, async (req, res) => {
+  try {
+    const { orgid, boardid, issueid } = req.params;
+
+    const idcheck = await prisma.membership.findFirst({
+      where: { userId: req.userId, organizationId: orgid }
+    });
+    if (!idcheck) {
+      return res.json({ message: "Access denied" });
+    }
+
+    const issue = await prisma.issue.findFirst({
+      where: { id: Number(issueid), boardId: boardid },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        position: true,
+        sectionId: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    if (!issue) {
+      return res.json({ message: "Issue not found" });
+    }
+
+    return res.json(issue);
+  }
+  catch (e) {
+    console.log(e);
+    return res.json({ message: "Something went wrong" });
+  }
+});

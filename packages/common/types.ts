@@ -17,6 +17,15 @@ export const organizationsSchema = z.object({
 })
 
 export const boardSchema = z.object({
-    title: z.string().min(1).max(20),
-    
+    title: z.string().min(1).max(20)
+
+})
+
+export const sectionSchema = z.object({
+    title: z.string().min(1).max(20)
+})
+
+export const issueSchema = z.object({
+    title:z.string().min(1).max(20),
+    description:z.string().min(1).max(50)
 })
