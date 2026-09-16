@@ -1,6 +1,6 @@
 import express from "express";
 import {prisma} from "db/client"
-import { organizationsSchema, signinSchema, signupSchema } from "common/types";
+import { boardSchema, organizationsSchema, signinSchema, signupSchema } from "common/types";
 import bcrypt from 'bcrypt';
 import { JWT_SECRET } from "common-backend/jwt_secret";
 import jwt from 'jsonwebtoken';
@@ -209,3 +209,216 @@ app.get("/organizations/:id", middleware, async (req, res) => {
     });
   }
 });
+
+app.delete("/organizations/:id", middleware,async(req,res)=>{
+  try{
+  const orgid = req.params.id;
+  const orgidcheck = await prisma.membership.findFirst({
+    where:{
+      userId: req.userId,
+      organizationId:orgid,
+      role:"OWNER"
+    }
+  })
+  if(!orgidcheck){
+    return res.json({
+      message:"Something went wrong"
+    })
+  }
+
+  await prisma.organization.delete({
+    where:{
+      id:orgid
+    }
+  })
+
+  return res.json({
+    message:"org deleted"
+  })
+
+  }
+  catch(e){
+    console.log(e);
+    return res.json({
+      message:'Something went wrong'
+    })
+  }
+
+});
+
+app.post("/organizations/:id/board", middleware,async (req,res)=>{
+
+try{
+
+const parsedData = boardSchema.safeParse(req.body);
+  const orgid = req.params.id;
+  if(!parsedData.success){
+    return res.json(
+      {
+        message:"Something went wrong"
+      }
+    )
+}
+  const {title} = parsedData.data;
+  const organizationcheck = await prisma.membership.findFirst({
+    where:{
+      userId:req.userId,
+      organizationId:orgid,
+      role:{
+        in:["ADMIN" ,"OWNER"]
+      }
+    }
+  })
+
+  if(!organizationcheck){
+    return res.json({
+      message:"Something went wrong "
+    })
+  }
+
+  const createBoard = await prisma.board.create({
+    data:{
+      organizationId:orgid,
+      title:title
+    }
+  })
+
+  return res.json({
+    createBoard
+  })
+  }
+  catch(e){
+    console.log(e);
+    return res.json({
+      message:"Something went wrong"
+    })
+  }
+  
+});
+
+app.get("/organizations/:id/boards", middleware, async (req,res)=>{
+
+  try{
+  const orgid = req.params.id;
+  
+  const orgCheck = await prisma.membership.findFirst({
+    where :{
+      userId:req.userId,
+      organizationId:orgid
+    }
+  })
+
+  if(!orgCheck){
+    return res.json({
+      message:"Something went wrong"
+    })
+  }
+  const boards = await prisma.board.findMany({
+    where:{
+      organizationId:orgid
+    }
+  })
+
+  return res.json(boards)
+
+  }
+  catch(e){
+    console.log(e)
+    return res.json({
+      message:"Something went wrong "
+    });
+  }
+
+})
+
+app.get("/organizations/:orgid/boards/:boardid", middleware, async(req,res)=>{
+  try{
+ const {orgid,boardid } = req.params;
+
+  const orgCheck = await prisma.membership.findFirst({
+    where:{
+      userId:req.userId,
+      organizationId:orgid
+    }
+  })
+  
+  if(!orgCheck){
+    return res.json({
+      message:"Someting went wrong "
+    })
+  }
+
+  const board = await prisma.board.findFirst({
+    where:{
+      id:boardid,
+      organizationId:orgid
+    },
+    select:{
+      title:true,
+      createdAt:true,
+      sections:{
+        select:{
+          title:true,
+          position:true,
+          issues:{
+            select:{
+              title:true,
+              description:true,
+              position:true
+            }
+          }
+        }
+      }
+    }
+  })
+
+  return res.json({
+    board
+  })
+  }
+ catch(e){
+  console.log(e);
+  return res.json({
+    message:'Something went wrong'
+  })
+ }
+})
+
+app.delete("/organizations/:orgid/boards/:boardid",middleware, async(req,res)=>{
+  try {
+    const {orgid,boardid } = req.params;
+    
+    const orgCheck = await prisma.membership.findFirst({
+      where:{
+        userId:req.userId,
+        organizationId:orgid,
+        role:{
+          in:["ADMIN","OWNER"]
+        }
+      }
+    })
+
+    if(!orgCheck){
+      return res.json({
+        message:"Something went wrong"
+      })
+    }
+
+    await prisma.board.delete({
+      where:{
+        id:boardid
+      }
+    })
+
+    return res.json({
+      message:'Board deleted'
+    })
+  } catch (e) {
+    console.log(e);
+    return res.json({
+      message:"Something went wrong"
+    })
+  }
+  
+})
+
