@@ -608,3 +608,46 @@ app.get("/organizations/:orgid/boards/:boardid/issues/:issueid", middleware, asy
     return res.json({ message: "Something went wrong" });
   }
 });
+
+app.delete("/organizations/:orgid/boards/:boardid/issues/:issueid", middleware,async (req,res)=>{
+  try{
+  const {orgid,boardid,issueid} = req.params;
+
+  const orgidcheck = await prisma.membership.findFirst({
+    where:{
+      userId:req.userId,
+      organizationId:orgid
+    }
+  })
+
+  if(!orgidcheck){
+    return res.json({
+      message:"Something went wrong "
+    })
+  }
+
+  const deleted = await prisma.issue.deleteMany({
+    where:{
+      id:Number(issueid),
+      boardId:boardid
+    }
+  })
+
+  if(deleted.count === 0){
+    return res.json({
+      message:"Issue not found"
+    })
+  }
+
+  return res.json({
+    message:" Issue deleted "
+  })
+  }
+  catch(e){
+    console.log(e)
+    return res.json({
+      message:"Something went wrong"
+    })
+  }
+})
+
