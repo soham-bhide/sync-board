@@ -1,6 +1,6 @@
 import express from "express";
 import {prisma} from "db/client"
-import { boardSchema, issueSchema, organizationsSchema, sectionSchema, signinSchema, signupSchema } from "common/types";
+import { boardSchema, issueSchema, organizationsSchema, sectionSchema, SectiontitleUpdateSchema, signinSchema, signupSchema } from "common/types";
 import bcrypt from 'bcrypt';
 import { JWT_SECRET } from "common-backend/jwt_secret";
 import jwt from 'jsonwebtoken';
@@ -651,3 +651,46 @@ app.delete("/organizations/:orgid/boards/:boardid/issues/:issueid", middleware,a
   }
 })
 
+app.put("/organizations/:orgid/boards/:boardid/sections/:sectionid", middleware, async (req, res) => {
+  try {
+    const { orgid, boardid, sectionid } = req.params;
+
+    const parsedData = SectiontitleUpdateSchema.safeParse(req.body); 
+    if (!parsedData.success) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+    const { title } = parsedData.data;
+
+    const idcheck = await prisma.membership.findFirst({
+      where: {
+        userId: req.userId,
+        organizationId: orgid,
+        role: { in: ["ADMIN", "OWNER"] }
+      }
+    });
+    if (!idcheck) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const sectioncheck = await prisma.section.findFirst({
+      where: { id: sectionid, boardId: boardid }
+    });
+    if (!sectioncheck) {
+      return res.status(404).json({ message: "Section not found" });
+    }
+
+    const updated = await prisma.section.update({
+      where: { id: sectionid },
+      data: { title }
+    });
+
+
+
+    return res.status(200).json(updated);
+  }
+  catch (e) {
+    console.log(e);
+
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+});
