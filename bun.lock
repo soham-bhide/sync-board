@@ -26,6 +26,7 @@
         "common-backend": "*",
         "db": "*",
         "express": "^5.2.1",
+        "http": "^0.0.1-security",
       },
       "devDependencies": {
         "@types/bcrypt": "^6.0.0",
@@ -41,8 +42,12 @@
     "apps/websocket": {
       "name": "websocket",
       "dependencies": {
+        "@types/jsonwebtoken": "^9.0.10",
         "@types/ws": "^8.18.1",
+        "common-backend": "*",
         "db": "*",
+        "http": "^0.0.1-security",
+        "jsonwebtoken": "^9.0.3",
         "ws": "^8.21.3",
       },
       "devDependencies": {
@@ -671,6 +676,8 @@
     "hermes-estree": ["hermes-estree@0.25.1", "", {}, "sha512-0wUoCcLp+5Ev5pDW2OriHC2MJCbwLwuRx+gAqMTOkGKJJiBCLjtrvy4PWUGn6MIVefecRpzoOZ/UV6iGdOr+Cw=="],
 
     "hermes-parser": ["hermes-parser@0.25.1", "", { "dependencies": { "hermes-estree": "0.25.1" } }, "sha512-6pEjquH3rqaI6cYAXYPcz9MS4rY6R4ngRgrgfDshRptUZIc3lw0MCIJIGDj9++mfySOuPTHB4nrSW99BCvOPIA=="],
+
+    "http": ["http@0.0.1-security", "", {}, "sha512-RnDvP10Ty9FxqOtPZuxtebw1j4L/WiqNMDtuc1YMH1XQm5TgDRaR1G9u8upL6KD1bXHSp9eSXo/ED+8Q7FAr+g=="],
 
     "http-errors": ["http-errors@2.0.1", "", { "dependencies": { "depd": "~2.0.0", "inherits": "~2.0.4", "setprototypeof": "~1.2.0", "statuses": "~2.0.2", "toidentifier": "~1.0.1" } }, "sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ=="],
 

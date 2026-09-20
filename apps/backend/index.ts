@@ -1,13 +1,18 @@
 import express from "express";
 import {prisma} from "db/client"
+import http from "http";
 import { boardSchema, issueSchema, organizationsSchema, sectionSchema, SectiontitleUpdateSchema, signinSchema, signupSchema } from "common/types";
 import bcrypt from 'bcrypt';
 import { JWT_SECRET } from "common-backend/jwt_secret";
 import jwt from 'jsonwebtoken';
 import { middleware } from "./middleware";
+import{setupWebSocketServer} from "../websocket/index"
 const app = express();
-
 app.use(express.json());
+const server = http.createServer(app);
+setupWebSocketServer(server);
+
+server.listen(3000);
 
 app.post("/signup",async (req,res)=>{
     try{

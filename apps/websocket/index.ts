@@ -1,50 +1,91 @@
-import {WebSocketServer} from "ws";
+import {WebSocketServer, WebSocket} from "ws";
 import {prisma} from "db/client";
-
-const wss = new WebSocketServer({ port: 3001 });
-
-interface User{
-userId:string,
-username:string,
-ws: WebSocket
-};
-
-interface Room {
-    boardId:string,
-    users:User[]
-}
-const boardRooms:Room[] = [];
-
-function findroom(boardId:string):Room|undefined{
-return boardRooms.find((room)=>{room.boardId ===boardId});
+import { joinroom,leaveroom,broadcastpresence,broadcasttoroom } from "./rooms";
+import { Server } from "http";
+import jwt from "jsonwebtoken";
+import { JWT_SECRET } from "common-backend/jwt_secret";
+interface JwtPayload {
+  userId: string;
 }
 
-function joinroom(boardId:string,userId:string,username:string,ws:WebSocket):void{
-    let room = findroom(boardId);
-    if(!room){
-        room = {boardId, users:[]}
-         boardRooms.push(room)
+export function setupWebSocketServer(server: Server): WebSocketServer {
+  const wss = new WebSocketServer({ server });
+
+  wss.on("connection", async (ws: WebSocket, req) => {
+    const url = new URL(req.url ?? "", `http://${req.headers.host}`);
+    const token = url.searchParams.get("token");
+
+    if (!token) {
+      ws.close(4001, "Unauthorized");
+      return;
     }
 
-    room.users = room.users.filter((u)=>{u.userId !== userId});
-    room.users.push({userId,username,ws});
-    broadcastPresence(boardId);
-}
+    let payload: JwtPayload;
+    try {
+      payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    } catch {
+      ws.close(4001, "Unauthorized");
+      return;
+    }
 
-function leaveroom(boardId:string,userId:string): void{
-    let room = findroom(boardId);
-    if(!room) return;
-    room.users = room.users.filter((u)=>{u.userId !== userId});
-    if(room.users.length ===0){
-        const index = boardRooms.findIndex((r)=>r.boardId ===boardId)
-        if(index ==-1){
-            boardRooms.splice(index,1)
+    const dbUser = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { username: true }
+    });
+
+    if (!dbUser) {
+      ws.close(4001, "Unauthorized");
+      return;
+    }
+
+    const userId = payload.userId;
+    const username = dbUser.username;
+    let currentBoardId: string | null = null;
+
+    ws.on("message", async (raw) => {
+      let msg: any;
+      try {
+        msg = JSON.parse(raw.toString());
+      } catch {
+        return;
+      }
+
+      if (msg.type === "join_board") {
+        const orgId: string = msg.orgId;
+        const boardId: string = msg.boardId;
+
+        const membership = await prisma.membership.findFirst({
+          where: { userId: userId, organizationId: orgId }
+        });
+
+        const boardBelongsToOrg = await prisma.board.findFirst({
+          where: { id: boardId, organizationId: orgId }
+        });
+
+        if (!membership || !boardBelongsToOrg) {
+          ws.send(JSON.stringify({ type: "error", message: "Access denied" }));
+          return;
         }
-    }
-    else{
-        broadcastPresence(boardId)
-    }
+
+        currentBoardId = boardId;
+        joinroom(boardId, userId, username,ws);
+      }
+
+      if (msg.type === "leave_board") {
+        if (currentBoardId !== null) {
+          leaveroom(currentBoardId, userId);
+          currentBoardId = null;
+        }
+      }
+    });
+
+    ws.on("close", () => {
+      if (currentBoardId !== null) {
+        leaveroom(currentBoardId, userId);
+      }
+    });
+  });
+
+  return wss;
 }
-wss.on("connection", (socket)=>{
-    
-})
+

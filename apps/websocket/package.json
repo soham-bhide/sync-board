@@ -10,8 +10,12 @@
     "typescript": "^7"
   },
   "dependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/ws": "^8.18.1",
+    "db": "*",
+    "http": "^0.0.1-security",
+    "jsonwebtoken": "^9.0.3",
     "ws": "^8.21.3",
-    "db":"*"
+    "common-backend":"*"
   }
 }
