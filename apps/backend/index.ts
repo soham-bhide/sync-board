@@ -12,7 +12,8 @@ app.use(express.json());
 const server = http.createServer(app);
 setupWebSocketServer(server);
 
-server.listen(3000);
+server.listen(3001);
+console.log('Running');
 
 app.post("/signup",async (req,res)=>{
     try{
@@ -48,8 +49,8 @@ const parsedData = signupSchema.safeParse(req.body);
     }
     catch(e){
         console.log(e);
-        return res.json({
-            error:"Error occured while signup"
+        return res.status(500).json({
+            error: e instanceof Error ? e.message : String(e)
         })
     }
  
@@ -72,13 +73,13 @@ if(!parsedData.success){
     }
  })
  if(!usercheck){
-    return res.json({
+    return res.status(401).json({
         message:"Invalid email or password"
     })
  }
  const passwordcheck = await bcrypt.compare(password,usercheck.password)
  if(!passwordcheck){
-    return res.json({
+    return res.status(401).json({
         message:"Invalid email or password"
     })
  }
@@ -90,7 +91,7 @@ if(!parsedData.success){
  })
 }
 catch(e){
-    return res.json({
+    return res.status(500).json({
         message:"Something went wrong"
     })
 }
@@ -101,7 +102,7 @@ app.post("/organizations", middleware, async (req, res) => {
   try {
     const parsedData = organizationsSchema.safeParse(req.body);
     if (!parsedData.success) {
-      return res.json({
+      return res.status(400).json({
         message: "Invalid credentials"
       });
     }
@@ -150,7 +151,7 @@ try{
     
   })
 
-    return res.json({
+    return res.status(200).json({
       members
     })
 
@@ -177,7 +178,7 @@ app.get("/organizations/:id", middleware, async (req, res) => {
     });
 
     if (!organizationcheck) {
-      return res.json({
+      return res.status(403).json({
         message: "Access denied or organization not found"
       });
     }
@@ -203,7 +204,7 @@ app.get("/organizations/:id", middleware, async (req, res) => {
       }
     });
 
-    return res.json({
+    return res.status(200).json({
       members: members
     });
   } catch (e) {
@@ -257,7 +258,7 @@ try{
 const parsedData = boardSchema.safeParse(req.body);
   const orgid = req.params.id;
   if(!parsedData.success){
-    return res.json(
+    return res.status(400).json(
       {
         message:"Something went wrong"
       }
@@ -403,7 +404,7 @@ app.delete("/organizations/:orgid/boards/:boardid",middleware, async(req,res)=>{
     })
 
     if(!orgCheck){
-      return res.json({
+      return res.status(403).json({
         message:"Something went wrong"
       })
     }
@@ -415,7 +416,7 @@ app.delete("/organizations/:orgid/boards/:boardid",middleware, async(req,res)=>{
       return res.status(404).json({ message: "Board not found" });
     }
 
-    return res.json({
+    return res.status(200).json({
       message:'Board deleted'
     })
   } catch (e) {
@@ -444,7 +445,7 @@ const {orgid, boardid} = req.params
     }
   })
   if(!idcheck){
-    return res.json({message:"Something went wrong"})
+    return res.status(403).json({message:"Something went wrong"})
   }
 
   const boardidcheck = await prisma.board.findFirst({
@@ -471,11 +472,11 @@ const {orgid, boardid} = req.params
       }
     })
 
-    return res.json(section)
+    return res.status(201).json(section)
   }
   catch(e){
     console.log(e);
-    return res.json({message:'Error occured'})
+    return res.status(500).json({message:'Error occured'})
   }
 })
 
@@ -485,7 +486,7 @@ const {orgid,boardid,sectionid} = req.params;
   const parsedData = issueSchema.safeParse(req.body);
 
   if(!parsedData.success){
-    return res.json({
+    return res.status(400).json({
       message:"Invalid credentials"
     })
   }
@@ -498,7 +499,7 @@ const {orgid,boardid,sectionid} = req.params;
   })
 
   if(!idcheck){
-    return res.json({
+    return res.status(403).json({
       message:"Organization doesnt exists"
     })
   }
@@ -511,7 +512,7 @@ const {orgid,boardid,sectionid} = req.params;
 
   }) 
   if(!sectioncheck){
-    return res.json({
+    return res.status(404).json({
       message:"Section not found"
     })
   }
@@ -537,7 +538,7 @@ const {orgid,boardid,sectionid} = req.params;
     return res.json(issue)
   }
   catch(e){
-    return res.json({
+    return res.status(500).json({
       message:"Error occured"
     })
   }
@@ -554,7 +555,7 @@ app.delete("/organizations/:orgid/boards/:boardid/sections/:sectionid", middlewa
     }
    })
    if(!idcheck){
-    return res.json({
+    return res.status(403).json({
       message:"Org doesnt exist"
     })
    }
@@ -567,13 +568,13 @@ app.delete("/organizations/:orgid/boards/:boardid/sections/:sectionid", middlewa
    })
 
   if (deleted.count === 0) {
-      return res.json({ message: "Section not found" });
+      return res.status(404).json({ message: "Section not found" });
   }
   return res.json({ message: "Section deleted" });
   }
   catch(e){
     console.log(e);
-      return res.json({ message: "Some went wrong" });
+      return res.status(500).json({ message: "Some went wrong" });
 
   } 
 })
@@ -586,7 +587,7 @@ app.get("/organizations/:orgid/boards/:boardid/issues/:issueid", middleware, asy
       where: { userId: req.userId, organizationId: orgid }
     });
     if (!idcheck) {
-      return res.json({ message: "Access denied" });
+      return res.status(403).json({ message: "Access denied" });
     }
 
     const issue = await prisma.issue.findFirst({
@@ -603,10 +604,10 @@ app.get("/organizations/:orgid/boards/:boardid/issues/:issueid", middleware, asy
     });
 
     if (!issue) {
-      return res.json({ message: "Issue not found" });
+      return res.status(404).json({ message: "Issue not found" });
     }
 
-    return res.json(issue);
+    return res.status(200).json(issue);
   }
   catch (e) {
     console.log(e);
@@ -639,7 +640,7 @@ app.delete("/organizations/:orgid/boards/:boardid/issues/:issueid", middleware,a
   })
 
   if(deleted.count === 0){
-    return res.json({
+    return res.status(404).json({
       message:"Issue not found"
     })
   }

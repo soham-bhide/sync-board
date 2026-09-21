@@ -45,6 +45,7 @@ export function joinroom(
         username,
         ws
     });
+    broadcastpresence(boardId)
 }
 
 export function leaveroom(
@@ -70,6 +71,7 @@ export function leaveroom(
             boardRooms.splice(index, 1);
         }
     }
+    broadcastpresence(boardId)
 }
 
 export function broadcasttoroom(boardId:string,data:unknown,excludedUserId?:string):void{
