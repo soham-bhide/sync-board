@@ -1,12 +1,13 @@
 import express from "express";
 import {prisma} from "db/client"
 import http from "http";
-import { boardSchema, issueSchema, organizationsSchema, sectionSchema, SectiontitleUpdateSchema, signinSchema, signupSchema } from "common/types";
+import { boardSchema, issueSchema, organizationsSchema,moveIssueSchema, sectionSchema, SectiontitleUpdateSchema, signinSchema, signupSchema } from "common/types";
 import bcrypt from 'bcrypt';
 import { JWT_SECRET } from "common-backend/jwt_secret";
 import jwt from 'jsonwebtoken';
 import { middleware } from "./middleware";
 import{setupWebSocketServer} from "../websocket/index"
+import {broadcasttoroom} from "../websocket/rooms"
 const app = express();
 app.use(express.json());
 const server = http.createServer(app);
@@ -657,6 +658,76 @@ app.delete("/organizations/:orgid/boards/:boardid/issues/:issueid", middleware,a
   }
 })
 
+app.put("/organizations/:orgid/boards/:boardid/issues/:issueid/move", middleware, async (req, res) => {
+  try {
+    const { orgid, boardid, issueid } = req.params;
+
+    const parsedData = moveIssueSchema.safeParse(req.body);
+    if (!parsedData.success) {
+      return res.status(400).json({ message: "Invalid request body" });
+    }
+    const { sectionId, beforeId, afterId } = parsedData.data;
+
+    const membershipCheck = await prisma.membership.findFirst({
+      where: { userId: req.userId, organizationId: orgid }
+    });
+    if (!membershipCheck) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const issueCheck = await prisma.issue.findFirst({
+      where: { id: Number(issueid), boardId: boardid }
+    });
+    if (!issueCheck) {
+      return res.status(404).json({ message: "Issue not found" });
+    }
+
+    const sectionCheck = await prisma.section.findFirst({
+      where: { id: sectionId, boardId: boardid }
+    });
+    if (!sectionCheck) {
+      return res.status(404).json({ message: "Section not found" });
+    }
+
+    let newPosition;
+    if (beforeId && afterId) {
+      const [before, after] = await Promise.all([
+        prisma.issue.findUnique({ where: { id: Number(beforeId) }, select: { position: true } }),
+        prisma.issue.findUnique({ where: { id: Number(afterId) }, select: { position: true } })
+      ]);
+      newPosition = (before.position + after.position) / 2;
+    } else if (beforeId) {
+      const before = await prisma.issue.findUnique({ where: { id: Number(beforeId) }, select: { position: true } });
+      newPosition = before.position + 1;
+    } else if (afterId) {
+      const after = await prisma.issue.findUnique({ where: { id: Number(afterId) }, select: { position: true } });
+      newPosition = after.position / 2;
+    } else {
+      newPosition = 1;
+    }
+
+    const updated = await prisma.issue.updateMany({
+      where: { id: Number(issueid), boardId: boardid },
+      data: { sectionId, position: newPosition }
+    });
+
+    if (updated.count === 0) {
+      return res.status(404).json({ message: "Issue not found" });
+    }
+
+    broadcasttoroom(
+      boardid,
+      { type: "issue_moved", issueId: Number(issueid), sectionId, position: newPosition },
+      req.userId
+    );
+
+    return res.status(200).json({ message: "Issue moved", sectionId, position: newPosition });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+});
+
 app.put("/organizations/:orgid/boards/:boardid/sections/:sectionid", middleware, async (req, res) => {
   try {
     const { orgid, boardid, sectionid } = req.params;
@@ -700,3 +771,4 @@ app.put("/organizations/:orgid/boards/:boardid/sections/:sectionid", middleware,
     return res.status(500).json({ message: "Something went wrong" });
   }
 });
+

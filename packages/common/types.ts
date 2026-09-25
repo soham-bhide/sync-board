@@ -33,3 +33,10 @@ export const issueSchema = z.object({
 export const SectiontitleUpdateSchema = z.object({
     title:z.string().min(1).max(20)
 })
+
+export const moveIssueSchema = z.object({
+    sectionId: z.string(),
+    beforeId:z.string(),
+    afterId:z.string()
+})
+
