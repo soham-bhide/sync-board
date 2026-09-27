@@ -8,7 +8,11 @@ import jwt from 'jsonwebtoken';
 import { middleware } from "./middleware";
 import{setupWebSocketServer} from "../websocket/index"
 import {broadcasttoroom} from "../websocket/rooms"
+import cors from "cors";
 const app = express();
+
+app.use(cors());
+
 app.use(express.json());
 const server = http.createServer(app);
 setupWebSocketServer(server);

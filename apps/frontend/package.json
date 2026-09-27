@@ -9,9 +9,12 @@
     "build": "bun run build.ts"
   },
   "dependencies": {
+    "@types/axios": "^0.14.4",
+    "axios": "^1.20.0",
     "bun-plugin-tailwind": "^0.1.2",
     "react": "^19",
     "react-dom": "^19",
+    "react-router-dom": "^7.18.4",
     "tailwindcss": "^4.1.11"
   },
   "devDependencies": {
